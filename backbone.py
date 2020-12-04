@@ -5,6 +5,29 @@ This module implements the disparity filter to compute a significance score of e
 import networkx as nx
 import numpy as np
 from scipy import integrate
+import pandas as pd
+DATA_PATH = "/Users/hayleeham/Documents/linkedin-network-viz/data/"
+
+
+def build_network(nodes, edges):
+    ''' Build the weighted network
+        Args
+            nodes: dataframe of node names and industries
+            edges: dataframe of endpoints and weights of edges
+        Returns
+            Weighted graph object
+    '''
+    G = nx.Graph()
+    # add the nodes
+    G.add_nodes_from(nodes['gvkey'].values)
+    # add the edges -- looking for (2, 3, {'weight': 3.1415})
+    edge_values = edges.values
+    edge_tuples = []
+    for source, target, weight in edge_values:
+        edge_tuples.append((source, target, {'weight':weight}))
+    G.add_edges_from(edge_tuples)
+    
+    return G
 
 
 def disparity_filter(G, weight='weight'):
@@ -124,16 +147,23 @@ def disparity_filter_alpha_cut(G,weight='weight',alpha_t=0.4, cut_mode='or'):
                 
             if alpha<alpha_t:
                 B.add_edge(u,v, weight=w[weight])
-        return B                
+        return B            
             
 if __name__ == '__main__':
-    G = nx.barabasi_albert_graph(1000, 5)
-    for u, v in G.edges():
-        G[u][v]['weight'] = np.random.randint(1,100)
+    # read in nodes and edges for the network
+    nodes = pd.read_csv(DATA_PATH + "nodes.csv")
+    edges = pd.read_csv(DATA_PATH + "edges.csv")
+
+    # build the network
+    print("Begin network build")
+    G = build_network(nodes, edges)
+    print("Network built")
+
+    # set alpha and run filter
     alpha = 0.05
     G = disparity_filter(G)
     G2 = nx.Graph([(u, v, d) for u, v, d in G.edges(data=True) if d['alpha'] < alpha])
     print('alpha = %s' % alpha)
     print('original: nodes = %s, edges = %s' % (G.number_of_nodes(), G.number_of_edges()))
     print('backbone: nodes = %s, edges = %s' % (G2.number_of_nodes(), G2.number_of_edges()))
-    print(G2.edges(data=True))
+    # print(G2.edges(data=True))
